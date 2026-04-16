@@ -30,11 +30,13 @@
               <el-radio-button value="3:4">小红书竖 (3:4)</el-radio-button>
               <el-radio-button value="16:9">小红书横 (16:9)</el-radio-button>
               <el-radio-button value="9:16">抖音竖 (9:16)</el-radio-button>
-              <el-radio-button value="16:9">抖音横 (16:9)</el-radio-button>
             </el-radio-group>
+            <el-button @click="addText" size="small" icon="Plus">添加文本</el-button>
           </div>
-          <div class="canvas-wrapper">
-            <canvas ref="canvasRef" id="main-canvas"></canvas>
+          <div class="canvas-wrapper" ref="canvasWrapperRef">
+            <div class="canvas-container" :style="canvasContainerStyle">
+              <canvas ref="canvasRef" id="main-canvas"></canvas>
+            </div>
           </div>
         </div>
       </el-main>
@@ -117,7 +119,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import * as fabric from 'fabric'
 
@@ -150,6 +152,7 @@ interface FieldConfig {
 
 // 状态
 const canvasRef = ref<HTMLCanvasElement | null>(null)
+const canvasWrapperRef = ref<HTMLDivElement | null>(null)
 let canvas: fabric.Canvas | null = null
 const templates = ref<Template[]>([])
 const currentTemplate = ref<Template | null>(null)
@@ -158,6 +161,24 @@ const selectedObject = ref<fabric.FabricObject | null>(null)
 const templateFields = ref<FieldConfig[]>([])
 const exportFormat = ref<string>('png')
 const exportQuality = ref<number>(0.9)
+
+// 计算画布容器样式
+const canvasContainerStyle = computed(() => {
+  if (!canvasWrapperRef.value) return {}
+  
+  const wrapperWidth = canvasWrapperRef.value.clientWidth - 40
+  const wrapperHeight = canvasWrapperRef.value.clientHeight - 40
+  
+  const size = ratioConfig[currentRatio.value] || ratioConfig['3:4']
+  const scaleX = wrapperWidth / size.width
+  const scaleY = wrapperHeight / size.height
+  const scale = Math.min(scaleX, scaleY, 1) // 不超过原始尺寸
+  
+  return {
+    transform: `scale(${scale})`,
+    transformOrigin: 'center center'
+  }
+})
 
 // 画布尺寸配置
 const ratioConfig: Record<string, { width: number; height: number }> = {
@@ -197,7 +218,9 @@ async function loadTemplates() {
       {
         id: 'template-1',
         name: '简约风格',
+        preview: '/templates/minimalist.jpg',
         config: {
+          background: '#ffffff',
           fields: [
             {
               key: '{title}',
@@ -244,7 +267,9 @@ async function loadTemplates() {
       {
         id: 'template-2',
         name: '商务风格',
+        preview: '/templates/business.jpg',
         config: {
+          background: '#f8f9fa',
           fields: [
             {
               key: '{title}',
@@ -274,6 +299,140 @@ async function loadTemplates() {
             }
           ]
         }
+      },
+      {
+        id: 'template-3',
+        name: '时尚风格',
+        preview: '/templates/fashion.jpg',
+        config: {
+          background: '#ffebee',
+          fields: [
+            {
+              key: '{title}',
+              label: '标题',
+              value: '{title}',
+              defaultStyle: {
+                left: 80,
+                top: 180,
+                fontSize: 80,
+                fill: '#e91e63',
+                fontWeight: 'bold',
+                textAlign: 'center'
+              }
+            },
+            {
+              key: '{subtitle}',
+              label: '副标题',
+              value: '{subtitle}',
+              defaultStyle: {
+                left: 80,
+                top: 300,
+                fontSize: 42,
+                fill: '#ec407a',
+                fontWeight: 'normal',
+                textAlign: 'center'
+              }
+            },
+            {
+              key: '{tag}',
+              label: '标签',
+              value: '{tag}',
+              defaultStyle: {
+                left: 80,
+                top: 400,
+                fontSize: 28,
+                fill: '#f06292',
+                fontWeight: 'normal',
+                textAlign: 'center'
+              }
+            }
+          ]
+        }
+      },
+      {
+        id: 'template-4',
+        name: '科技风格',
+        preview: '/templates/tech.jpg',
+        config: {
+          background: '#0d47a1',
+          fields: [
+            {
+              key: '{title}',
+              label: '标题',
+              value: '{title}',
+              defaultStyle: {
+                left: 60,
+                top: 200,
+                fontSize: 68,
+                fill: '#42a5f5',
+                fontWeight: 'bold',
+                textAlign: 'left'
+              }
+            },
+            {
+              key: '{subtitle}',
+              label: '副标题',
+              value: '{subtitle}',
+              defaultStyle: {
+                left: 60,
+                top: 320,
+                fontSize: 38,
+                fill: '#90caf9',
+                fontWeight: 'normal',
+                textAlign: 'left'
+              }
+            }
+          ]
+        }
+      },
+      {
+        id: 'template-5',
+        name: '文艺风格',
+        preview: '/templates/artistic.jpg',
+        config: {
+          background: '#fff8e1',
+          fields: [
+            {
+              key: '{title}',
+              label: '标题',
+              value: '{title}',
+              defaultStyle: {
+                left: 120,
+                top: 250,
+                fontSize: 56,
+                fill: '#5d4037',
+                fontWeight: 'normal',
+                textAlign: 'center'
+              }
+            },
+            {
+              key: '{subtitle}',
+              label: '副标题',
+              value: '{subtitle}',
+              defaultStyle: {
+                left: 120,
+                top: 350,
+                fontSize: 36,
+                fill: '#8d6e63',
+                fontWeight: 'normal',
+                textAlign: 'center'
+              }
+            },
+            {
+              key: '{author}',
+              label: '作者',
+              value: '{author}',
+              defaultStyle: {
+                left: 120,
+                top: 1150,
+                fontSize: 28,
+                fill: '#a1887f',
+                fontWeight: 'normal',
+                textAlign: 'right'
+              }
+            }
+          ]
+        }
       }
     ]
     
@@ -297,18 +456,7 @@ function selectTemplate(template: Template) {
   
   if (canvas) {
     canvas.clear()
-    canvas.backgroundColor = '#ffffff'
-    
-    // 添加背景色块示例
-    const bgRect = new fabric.Rect({
-      left: 0,
-      top: 0,
-      width: canvas.width,
-      height: 100,
-      fill: '#f0f0f0',
-      selectable: false
-    })
-    canvas.add(bgRect)
+    canvas.backgroundColor = template.config.background || '#ffffff'
     
     // 添加文本字段
     template.config.fields.forEach(field => {
@@ -578,10 +726,15 @@ function exportAll() {
   justify-content: center;
   background-color: #f0f2f5;
   border-radius: 8px;
-  overflow: auto;
+  overflow: hidden;
+  position: relative;
   
-  canvas {
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  .canvas-container {
+    transition: transform 0.3s ease;
+    
+    canvas {
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+    }
   }
 }
 
