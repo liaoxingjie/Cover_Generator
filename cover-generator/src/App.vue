@@ -50,13 +50,13 @@
               <el-form-item label="文本内容">
                 <el-input 
                   v-if="selectedObject.type === 'i-text'"
-                  v-model="selectedObject.text"
+                  v-model="(selectedObject as any).text"
                   @input="updateObject"
                 />
               </el-form-item>
               <el-form-item label="字号">
                 <el-input-number 
-                  v-model="selectedObject.fontSize"
+                  v-model="(selectedObject as any).fontSize"
                   :min="8"
                   :max="200"
                   @change="updateObject"
@@ -66,13 +66,13 @@
                 <el-color-picker v-model="selectedObject.fill" @change="updateObject" />
               </el-form-item>
               <el-form-item label="字重">
-                <el-select v-model="selectedObject.fontWeight" @change="updateObject">
+                <el-select v-model="(selectedObject as any).fontWeight" @change="updateObject">
                   <el-option label="常规" value="normal" />
                   <el-option label="粗体" value="bold" />
                 </el-select>
               </el-form-item>
               <el-form-item label="对齐方式">
-                <el-select v-model="selectedObject.textAlign" @change="updateObject">
+                <el-select v-model="(selectedObject as any).textAlign" @change="updateObject">
                   <el-option label="左对齐" value="left" />
                   <el-option label="居中" value="center" />
                   <el-option label="右对齐" value="right" />
@@ -93,7 +93,6 @@
                 <el-input v-model="field.value" @input="updateField(field)" />
               </el-form-item>
             </el-form>
-            <el-button @click="addText" type="primary" size="small" style="width: 100%">添加文本</el-button>
           </div>
 
           <div class="property-section">
@@ -102,14 +101,14 @@
               <el-form-item label="格式">
                 <el-select v-model="exportFormat">
                   <el-option label="PNG" value="png" />
-                  <el-option label="JPG" value="jpeg" />
+                  <el-option label="JPEG" value="jpeg" />
                 </el-select>
               </el-form-item>
-              <el-form-item label="质量 (JPG)">
+              <el-form-item label="质量">
                 <el-slider v-model="exportQuality" :min="0.1" :max="1" :step="0.1" />
               </el-form-item>
             </el-form>
-            <el-button @click="exportAll" type="success" size="large" style="width: 100%">一键导出四尺寸</el-button>
+            <el-button @click="exportAll" type="primary" size="default" style="width: 100%">导出所有尺寸</el-button>
           </div>
         </div>
       </el-aside>
@@ -120,7 +119,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { fabric } from 'fabric'
+import * as fabric from 'fabric'
 
 // 类型定义
 interface Template {
@@ -140,12 +139,12 @@ interface FieldConfig {
   label: string
   value: string
   defaultStyle: {
+    left: number
+    top: number
     fontSize: number
     fill: string
     fontWeight: string
     textAlign: string
-    left: number
-    top: number
   }
 }
 
@@ -155,7 +154,7 @@ let canvas: fabric.Canvas | null = null
 const templates = ref<Template[]>([])
 const currentTemplate = ref<Template | null>(null)
 const currentRatio = ref<string>('3:4')
-const selectedObject = ref<fabric.Object | null>(null)
+const selectedObject = ref<fabric.FabricObject | null>(null)
 const templateFields = ref<FieldConfig[]>([])
 const exportFormat = ref<string>('png')
 const exportQuality = ref<number>(0.9)
@@ -201,29 +200,42 @@ async function loadTemplates() {
         config: {
           fields: [
             {
-              key: 'title',
-              label: '主标题',
-              value: '我的封面标题',
+              key: '{title}',
+              label: '标题',
+              value: '{title}',
               defaultStyle: {
+                left: 50,
+                top: 150,
                 fontSize: 72,
                 fill: '#333333',
                 fontWeight: 'bold',
-                textAlign: 'center',
-                left: 450,
-                top: 400
+                textAlign: 'left'
               }
             },
             {
-              key: 'subtitle',
+              key: '{subtitle}',
               label: '副标题',
-              value: '副标题内容',
+              value: '{subtitle}',
               defaultStyle: {
-                fontSize: 36,
+                left: 50,
+                top: 250,
+                fontSize: 48,
                 fill: '#666666',
                 fontWeight: 'normal',
-                textAlign: 'center',
-                left: 450,
-                top: 500
+                textAlign: 'left'
+              }
+            },
+            {
+              key: '{author}',
+              label: '作者',
+              value: '{author}',
+              defaultStyle: {
+                left: 50,
+                top: 1100,
+                fontSize: 32,
+                fill: '#999999',
+                fontWeight: 'normal',
+                textAlign: 'left'
               }
             }
           ]
@@ -235,16 +247,29 @@ async function loadTemplates() {
         config: {
           fields: [
             {
-              key: 'title',
-              label: '主标题',
-              value: '专业封面',
+              key: '{title}',
+              label: '标题',
+              value: '{title}',
               defaultStyle: {
-                fontSize: 64,
-                fill: '#1a1a1a',
-                fontWeight: 'bold',
-                textAlign: 'left',
                 left: 100,
-                top: 300
+                top: 200,
+                fontSize: 64,
+                fill: '#1a73e8',
+                fontWeight: 'bold',
+                textAlign: 'center'
+              }
+            },
+            {
+              key: '{subtitle}',
+              label: '副标题',
+              value: '{subtitle}',
+              defaultStyle: {
+                left: 100,
+                top: 300,
+                fontSize: 40,
+                fill: '#5f6368',
+                fontWeight: 'normal',
+                textAlign: 'center'
               }
             }
           ]
@@ -253,12 +278,9 @@ async function loadTemplates() {
     ]
     
     templates.value = mockTemplates
-    if (mockTemplates.length > 0) {
-      selectTemplate(mockTemplates[0])
-    }
   } catch (error) {
+    console.error('加载模板失败:', error)
     ElMessage.error('加载模板失败')
-    console.error(error)
   }
 }
 
@@ -275,7 +297,7 @@ function selectTemplate(template: Template) {
   
   if (canvas) {
     canvas.clear()
-    canvas.setBackgroundColor('#ffffff', () => {})
+    canvas.backgroundColor = '#ffffff'
     
     // 添加背景色块示例
     const bgRect = new fabric.Rect({
@@ -328,7 +350,7 @@ function onRatioChange() {
 }
 
 // 处理选择
-function handleSelection(e: fabric.IEvent) {
+function handleSelection(e: any) {
   const target = e.selected?.[0]
   if (target) {
     selectedObject.value = target
@@ -346,7 +368,7 @@ function updateObject() {
 // 删除对象
 function deleteObject() {
   if (canvas && selectedObject.value) {
-    canvas.remove(selectedObject.value)
+    canvas.remove(selectedObject.value as any)
     selectedObject.value = null
   }
 }
@@ -381,7 +403,7 @@ function addText() {
   
   canvas.add(newText)
   canvas.setActiveObject(newText)
-  handleSelection({ selected: [newText] } as any)
+  handleSelection({ selected: [newText] })
 }
 
 // 导出所有尺寸
@@ -400,13 +422,13 @@ function exportAll() {
     if (!config) return
     
     // 临时调整画布尺寸
-    const originalWidth = canvas.width
-    const originalHeight = canvas.height
+    const originalWidth = canvas!.width
+    const originalHeight = canvas!.height
     
-    canvas.setDimensions({ width: config.width, height: config.height })
+    canvas!.setDimensions({ width: config.width, height: config.height })
     
     // 缩放对象
-    const objects = canvas.getObjects()
+    const objects = canvas!.getObjects()
     objects.forEach(obj => {
       if (obj.left !== undefined && originalWidth) {
         obj.set('left', (obj.left / originalWidth) * config.width)
@@ -416,12 +438,13 @@ function exportAll() {
       }
     })
     
-    canvas.requestRenderAll()
+    canvas!.requestRenderAll()
     
     // 导出
-    const dataURL = canvas.toDataURL({
+    const dataURL = canvas!.toDataURL({
       format: exportFormat.value as any,
-      quality: exportQuality.value
+      quality: exportQuality.value,
+      multiplier: 1
     })
     
     // 下载
@@ -431,7 +454,7 @@ function exportAll() {
     link.click()
     
     // 恢复原始尺寸
-    canvas.setDimensions({ width: originalWidth, height: originalHeight })
+    canvas!.setDimensions({ width: originalWidth, height: originalHeight })
     objects.forEach(obj => {
       if (obj.left !== undefined && config.width) {
         obj.set('left', (obj.left / config.width) * originalWidth)
@@ -440,7 +463,7 @@ function exportAll() {
         obj.set('top', (obj.top / config.height) * originalHeight)
       }
     })
-    canvas.requestRenderAll()
+    canvas!.requestRenderAll()
   })
   
   ElMessage.success('四尺寸封面已导出！')
@@ -457,23 +480,26 @@ function exportAll() {
   height: 100%;
 }
 
+.el-aside {
+  background-color: #f5f7fa;
+  border-right: 1px solid #e4e7ed;
+  overflow-y: auto;
+}
+
 .sidebar {
   padding: 20px;
-  background: #f5f7fa;
-  height: 100%;
-  overflow-y: auto;
   
   h2 {
     margin-bottom: 15px;
     font-size: 18px;
+    color: #303133;
   }
 }
 
 .template-list {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-  margin-top: 15px;
+  gap: 15px;
+  margin-top: 20px;
 }
 
 .template-item {
@@ -485,52 +511,64 @@ function exportAll() {
   
   &:hover {
     border-color: #409eff;
+    transform: translateY(-2px);
   }
   
   &.active {
     border-color: #409eff;
-    box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2);
+    box-shadow: 0 2px 12px rgba(64, 158, 255, 0.3);
   }
   
   img {
     width: 100%;
-    height: 80px;
+    height: 150px;
     object-fit: cover;
   }
   
   .no-preview {
     width: 100%;
-    height: 80px;
-    background: #e4e7ed;
+    height: 150px;
     display: flex;
     align-items: center;
     justify-content: center;
+    background-color: #f5f7fa;
     color: #909399;
-    font-size: 12px;
   }
   
   .template-name {
     display: block;
-    padding: 8px;
+    padding: 10px;
     text-align: center;
-    font-size: 12px;
-    background: #fff;
+    font-size: 14px;
+    color: #606266;
+    background-color: #fff;
   }
 }
 
+.el-main {
+  padding: 20px;
+  background-color: #fff;
+}
+
 .canvas-area {
+  height: 100%;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  background: #e4e7ed;
-  padding: 20px;
 }
 
 .toolbar {
   margin-bottom: 15px;
+  padding: 10px;
+  background-color: #f5f7fa;
+  border-radius: 4px;
   display: flex;
   align-items: center;
   gap: 10px;
+  
+  span {
+    font-size: 14px;
+    color: #606266;
+  }
 }
 
 .canvas-wrapper {
@@ -538,7 +576,7 @@ function exportAll() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #fff;
+  background-color: #f0f2f5;
   border-radius: 8px;
   overflow: auto;
   
@@ -549,28 +587,26 @@ function exportAll() {
 
 .properties-panel {
   padding: 20px;
-  background: #f5f7fa;
-  height: 100%;
-  overflow-y: auto;
   
   h2 {
     margin-bottom: 15px;
     font-size: 18px;
+    color: #303133;
   }
 }
 
 .property-section {
   margin-bottom: 25px;
   padding-bottom: 20px;
-  border-bottom: 1px solid #e4e7ed;
+  border-bottom: 1px solid #ebeef5;
   
   &:last-child {
     border-bottom: none;
   }
   
   h3 {
-    margin-bottom: 12px;
-    font-size: 14px;
+    margin-bottom: 15px;
+    font-size: 16px;
     color: #606266;
   }
 }
